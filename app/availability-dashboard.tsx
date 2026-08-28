@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
+import Link from "next/link";
+import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, Settings, ShieldCheck, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DEPOTS, PLUS_ROSTER } from "@/lib/plus-roster";
+
+type Depot = { id: string; name: string };
 
 type Responder = {
   id: string;
@@ -14,25 +16,14 @@ type Responder = {
   updatedBy: string | null;
 };
 
-const DEFAULT_RESPONDERS: Responder[] = PLUS_ROSTER.map((responder) => ({
-    ...responder,
-    status: "off-duty",
-    updatedAt: null,
-    updatedBy: null,
-}));
-
-function mergeResponders(remote: Responder[]) {
-  const remoteById = new Map(remote.map((responder) => [responder.id, responder]));
-  return DEFAULT_RESPONDERS.map((responder) => remoteById.get(responder.id) ?? responder);
-}
-
 function formatTime(value: string | null) {
   if (!value) return "Nog niet gewijzigd";
   return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
 export function AvailabilityDashboard() {
-  const [responders, setResponders] = useState<Responder[]>(DEFAULT_RESPONDERS);
+  const [depots, setDepots] = useState<Depot[]>([]);
+  const [responders, setResponders] = useState<Responder[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +34,9 @@ export function AvailabilityDashboard() {
     try {
       const response = await fetch("/api/availability", { cache: "no-store" });
       if (!response.ok) throw new Error("Status kon niet worden opgehaald");
-      const payload = (await response.json()) as { responders: Responder[] };
-      setResponders(mergeResponders(payload.responders));
+      const payload = (await response.json()) as { depots: Depot[]; responders: Responder[] };
+      setDepots(payload.depots);
+      setResponders(payload.responders);
       setError(null);
     } catch {
       setError("Synchronisatie tijdelijk onderbroken");
@@ -108,7 +100,7 @@ export function AvailabilityDashboard() {
               <p className="mt-0.5 text-[11px] text-white/55">Actuele beschikbaarheid per vestiging</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 text-xs text-white/65 sm:flex">
               <span className={`size-2 rounded-full ${error ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`} />
               {error ? "Verbinding verbroken" : "Live verbonden"}
@@ -117,6 +109,7 @@ export function AvailabilityDashboard() {
               <Clock3 className="size-4 text-[#f9b233]" />
               {clock.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
             </div>
+            <Link href="/beheer" className="grid size-8 place-items-center border border-white/15 text-white/60 transition hover:border-white/30 hover:text-white" aria-label="Beheer openen"><Settings className="size-4" /></Link>
           </div>
         </div>
       </header>
@@ -147,14 +140,14 @@ export function AvailabilityDashboard() {
         {error && <div className="mb-4 border-l-4 border-red-500 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800">{error}</div>}
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-busy={loading}>
-          {DEPOTS.map((depot) => {
-            const depotResponders = responders.filter((responder) => responder.depot === depot);
+          {depots.map((depot) => {
+            const depotResponders = responders.filter((responder) => responder.depot === depot.name);
             const depotAvailable = depotResponders.filter((responder) => responder.status === "available").length;
             const depotBusy = depotResponders.filter((responder) => responder.status === "busy").length;
             return (
-              <article key={depot} className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <article key={depot.id} className="overflow-hidden border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 bg-[#f8f9fa] px-4 py-3">
-                  <div className="flex items-center gap-2.5"><Building2 className="size-4 text-slate-500" /><h2 className="text-sm font-bold uppercase tracking-[0.04em]">{depot}</h2></div>
+                  <div className="flex items-center gap-2.5"><Building2 className="size-4 text-slate-500" /><h2 className="text-sm font-bold uppercase tracking-[0.04em]">{depot.name}</h2></div>
                   <span className={`min-w-8 px-2 py-1 text-center text-[10px] font-bold ${depotAvailable ? "bg-emerald-100 text-emerald-800" : depotBusy ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>{depotResponders.length ? `${depotAvailable} vrij · ${depotBusy} bezig` : "0"}</span>
                 </div>
                 <div className="divide-y divide-slate-100">
