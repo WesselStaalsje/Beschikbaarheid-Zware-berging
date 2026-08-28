@@ -7,16 +7,6 @@ export const dynamic = "force-dynamic";
 const STATUSES = new Set(["off-duty", "available", "busy"]);
 type AvailabilityInput = { id?: string; status?: string };
 
-function requestUser(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Basic ")) return "Meldkamer";
-  try {
-    return Buffer.from(authorization.slice(6), "base64").toString("utf8").split(":", 1)[0].slice(0, 100) || "Meldkamer";
-  } catch {
-    return "Meldkamer";
-  }
-}
-
 export async function GET() {
   try {
     const sql = getSql();
@@ -37,7 +27,7 @@ export async function PUT(request: Request) {
     if (!input.id || !rosterEntry || !input.status || !STATUSES.has(input.status)) {
       return Response.json({ error: "Ongeldige gegevens" }, { status: 400 });
     }
-    const updatedBy = requestUser(request);
+    const updatedBy = "Meldkamer";
     const updatedAt = new Date().toISOString();
     const sql = getSql();
     await sql`

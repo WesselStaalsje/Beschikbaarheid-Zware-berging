@@ -4,13 +4,9 @@ Productieklare mobiele webapp voor de status van Plusbergers per vestiging. De a
 
 ## Uitrollen op Vercel
 
-1. Pak de ZIP uit en zet de map in een GitHub-repository.
-2. Kies in Vercel **Add New → Project** en importeer de repository.
-3. Voeg via **Storage / Marketplace** een **Neon Postgres**-database toe aan dit project. Hierdoor wordt `DATABASE_URL` automatisch ingesteld.
-4. Voeg bij **Settings → Environment Variables** toe:
-   - `APP_USER`: bijvoorbeeld `meldkamer`
-   - `APP_PASSWORD`: een lang, uniek wachtwoord
-5. Start daarna de deployment opnieuw. De build maakt de vereiste tabel automatisch aan.
+1. Importeer de GitHub-repository als Vercel-project.
+2. Voeg via **Storage / Marketplace** een **Neon Postgres**-database toe aan dit project. Hierdoor wordt `DATABASE_URL` automatisch ingesteld.
+3. Start daarna de deployment opnieuw. De build maakt de vereiste tabel automatisch aan.
 
 De Vercel-build stopt bewust wanneer `DATABASE_URL` ontbreekt. Zo wordt nooit per ongeluk een versie zonder centrale opslag gepubliceerd.
 
@@ -23,7 +19,7 @@ npm run db:setup
 npm run dev
 ```
 
-Open `http://localhost:3000`. De browser vraagt om de ingestelde gebruikersnaam en het wachtwoord.
+Open `http://localhost:3000`. De app is openbaar toegankelijk en gebruikt geen inlogscherm.
 
 ## Installeren op telefoon
 

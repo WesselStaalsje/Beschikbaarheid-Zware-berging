@@ -31,7 +31,7 @@ function formatTime(value: string | null) {
   return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-export function AvailabilityDashboard({ currentUser }: { currentUser: string }) {
+export function AvailabilityDashboard() {
   const [responders, setResponders] = useState<Responder[]>(DEFAULT_RESPONDERS);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -74,7 +74,7 @@ export function AvailabilityDashboard({ currentUser }: { currentUser: string }) 
   async function updateResponder(responder: Responder, status: Responder["status"]) {
     const previous = responders;
     const updatedAt = new Date().toISOString();
-    setResponders((items) => items.map((item) => item.id === responder.id ? { ...item, status, updatedAt, updatedBy: currentUser } : item));
+    setResponders((items) => items.map((item) => item.id === responder.id ? { ...item, status, updatedAt, updatedBy: "Meldkamer" } : item));
     setSyncing(true);
     try {
       const response = await fetch("/api/availability", {
@@ -182,7 +182,7 @@ export function AvailabilityDashboard({ currentUser }: { currentUser: string }) 
             );
           })}
         </section>
-        <footer className="mt-4 flex flex-col justify-between gap-1 border-t border-slate-300 pt-3 text-[10px] uppercase tracking-[0.08em] text-slate-400 sm:flex-row"><span>Plusdiensten · automatisch vernieuwd om de 4 seconden</span><span>Ingelogd als {currentUser}</span></footer>
+        <footer className="mt-4 flex flex-col justify-between gap-1 border-t border-slate-300 pt-3 text-[10px] uppercase tracking-[0.08em] text-slate-400 sm:flex-row"><span>Plusdiensten · automatisch vernieuwd om de 4 seconden</span><span>Openbaar dashboard</span></footer>
       </div>
     </main>
   );
