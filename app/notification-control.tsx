@@ -30,9 +30,9 @@ export function NotificationControl() {
       const registration = await navigator.serviceWorker.ready;
       const current = await registration.pushManager.getSubscription();
       if (current) {
-        const testResponse = await fetch("/api/push", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(current) });
-        if (!testResponse.ok) throw new Error("Testmelding mislukt");
-        setState("on"); setMessage("Testmelding verstuurd. Controleer je Windows-meldingen."); return;
+        await fetch("/api/push", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ endpoint: current.endpoint }) });
+        await current.unsubscribe();
+        setState("off"); setMessage("Meldingen zijn uitgeschakeld."); return;
       }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") { setState(permission === "denied" ? "denied" : "off"); return; }
@@ -42,15 +42,13 @@ export function NotificationControl() {
       const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
       const saveResponse = await fetch("/api/push", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(subscription) });
       if (!saveResponse.ok) throw new Error("Registratie mislukt");
-      const testResponse = await fetch("/api/push", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(subscription) });
-      if (!testResponse.ok) throw new Error("Testmelding mislukt");
-      setState("on"); setMessage("Meldingen staan aan. Er is direct een testmelding verstuurd.");
+      setState("on"); setMessage("Pushmeldingen staan aan.");
     } catch {
       setState("off"); setMessage("Inschakelen is niet gelukt. Probeer het opnieuw.");
     }
   }
 
-  const label = state === "on" ? "Test melding" : state === "loading" ? "Even wachten…" : "Meldingen inschakelen";
+  const label = state === "on" ? "Meldingen aan" : state === "loading" ? "Even wachten…" : "Meldingen inschakelen";
   return (
     <div className="relative">
       <button onClick={() => void toggle()} disabled={state === "loading"} className={`flex h-8 items-center gap-2 border px-2.5 text-[11px] font-bold transition disabled:opacity-60 ${state === "on" ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" : "border-white/15 text-white/65 hover:border-white/30 hover:text-white"}`} title={message || label}>
