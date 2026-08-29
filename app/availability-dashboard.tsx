@@ -10,6 +10,7 @@ type Depot = { id: string; name: string };
 type Responder = {
   id: string;
   name: string;
+  vehicleNumber: string | null;
   depot: string;
   status: "off-duty" | "available" | "busy";
   activityNote: string | null;
@@ -163,7 +164,7 @@ export function AvailabilityDashboard() {
                     <div key={responder.id} className={`px-4 py-3 transition ${responder.status === "available" ? "bg-emerald-50/45" : responder.status === "busy" ? "bg-amber-50/55" : "bg-white"}`}>
                       <div className="mb-2.5 flex items-center gap-3">
                         <div className={`grid size-8 shrink-0 place-items-center rounded-full ${responder.status === "available" ? "bg-emerald-500 text-white" : responder.status === "busy" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-400"}`}>{responder.status === "available" ? <Check className="size-4" strokeWidth={3} /> : responder.status === "busy" ? <Wrench className="size-4" /> : <CircleMinus className="size-4" />}</div>
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{responder.name}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{responder.updatedAt ? `${formatTime(responder.updatedAt)} · ${responder.updatedBy ?? "Meldkamer"}` : "Niet in dienst"}</p></div>
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{responder.name}{responder.vehicleNumber ? <span className="ml-1.5 font-mono text-xs font-bold text-slate-500">· {responder.vehicleNumber}</span> : null}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{responder.updatedAt ? `${formatTime(responder.updatedAt)} · ${responder.updatedBy ?? "Meldkamer"}` : "Niet in dienst"}</p></div>
                       </div>
                       <RadioGroup value={responder.status} onValueChange={(value) => void updateResponder(responder, value as Responder["status"])} disabled={syncing} className="grid grid-cols-3 gap-1" aria-label={`Status van ${responder.name}`}>
                         <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "off-duty" ? "border-slate-500 bg-slate-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}><RadioGroupItem value="off-duty" className="sr-only" />Niet in dienst</label>
