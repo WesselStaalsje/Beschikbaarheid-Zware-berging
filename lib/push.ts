@@ -1,4 +1,5 @@
 import webpush from "web-push";
+import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 
 type PushSettings = { public_key: string; private_key: string };
@@ -32,7 +33,7 @@ export async function sendStatusNotification(change: StatusNotification) {
     title: `${change.name} ${statusLabel}`,
     body,
     url: "/",
-    tag: `status-${change.name}`,
+    tag: `status-${randomUUID()}`,
   });
 
   const results = await Promise.allSettled(subscriptions.map(async (subscription) => {
