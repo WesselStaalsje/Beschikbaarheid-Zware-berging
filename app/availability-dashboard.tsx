@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, Settings, ShieldCheck, Wrench } from "lucide-react";
+import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type Depot = { id: string; name: string };
@@ -12,6 +12,7 @@ type Responder = {
   name: string;
   depot: string;
   status: "off-duty" | "available" | "busy";
+  activityNote: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 };
@@ -63,16 +64,17 @@ export function AvailabilityDashboard() {
     [responders],
   );
 
-  async function updateResponder(responder: Responder, status: Responder["status"]) {
+  async function updateResponder(responder: Responder, status: Responder["status"], note = responder.activityNote) {
     const previous = responders;
     const updatedAt = new Date().toISOString();
-    setResponders((items) => items.map((item) => item.id === responder.id ? { ...item, status, updatedAt, updatedBy: "Meldkamer" } : item));
+    const activityNote = status === "busy" ? note : null;
+    setResponders((items) => items.map((item) => item.id === responder.id ? { ...item, status, activityNote, updatedAt, updatedBy: "Meldkamer" } : item));
     setSyncing(true);
     try {
       const response = await fetch("/api/availability", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: responder.id, status }),
+        body: JSON.stringify({ id: responder.id, status, activityNote }),
       });
       if (!response.ok) throw new Error("Opslaan mislukt");
       const payload = (await response.json()) as { responder: Responder };
@@ -168,6 +170,7 @@ export function AvailabilityDashboard() {
                         <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "available" ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-emerald-50"}`}><RadioGroupItem value="available" className="sr-only" />Beschikbaar</label>
                         <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "busy" ? "border-amber-500 bg-amber-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-amber-50"}`}><RadioGroupItem value="busy" className="sr-only" />Bezig</label>
                       </RadioGroup>
+                      {responder.status === "busy" ? <BusyNote responder={responder} disabled={syncing} onSave={(note) => updateResponder(responder, "busy", note)} /> : null}
                     </div>
                   ))}
                 </div>
@@ -178,5 +181,25 @@ export function AvailabilityDashboard() {
         <footer className="mt-4 flex flex-col justify-between gap-1 border-t border-slate-300 pt-3 text-[10px] uppercase tracking-[0.08em] text-slate-400 sm:flex-row"><span>Plusdiensten · automatisch vernieuwd om de 4 seconden</span><span>Openbaar dashboard</span></footer>
       </div>
     </main>
+  );
+}
+
+function BusyNote({ responder, disabled, onSave }: { responder: Responder; disabled: boolean; onSave: (note: string) => Promise<void> }) {
+  const [note, setNote] = useState(responder.activityNote ?? "");
+  useEffect(() => { setNote(responder.activityNote ?? ""); }, [responder.activityNote]);
+  const changed = note.trim() !== (responder.activityNote ?? "");
+
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); void onSave(note.trim()); }} className="mt-2 flex gap-1.5">
+      <input
+        autoFocus={!responder.activityNote}
+        value={note}
+        onChange={(event) => setNote(event.target.value.slice(0, 100))}
+        placeholder="Waar is deze chauffeur mee bezig?"
+        aria-label={`Werkzaamheden van ${responder.name}`}
+        className="min-w-0 flex-1 border border-amber-300 bg-white px-2.5 py-2 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500"
+      />
+      <button disabled={disabled || !changed} className="grid w-9 place-items-center bg-amber-500 text-white transition hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400" aria-label="Werkzaamheden opslaan"><Save className="size-4" /></button>
+    </form>
   );
 }

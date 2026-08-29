@@ -24,6 +24,7 @@ await sql`CREATE TABLE IF NOT EXISTS depots (
 await sql`ALTER TABLE responders ADD COLUMN IF NOT EXISTS depot_id TEXT`;
 await sql`ALTER TABLE responders ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`;
 await sql`ALTER TABLE responders ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`;
+await sql`ALTER TABLE responders ADD COLUMN IF NOT EXISTS activity_note TEXT`;
 await sql`CREATE TABLE IF NOT EXISTS admin_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   pin_salt TEXT NOT NULL,
