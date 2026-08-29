@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { getPushPublicKey } from "@/lib/push";
+import { getPushPublicKey, sendTestNotification } from "@/lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,4 +32,18 @@ export async function DELETE(request: Request) {
     await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;
   }
   return Response.json({ subscribed: false });
+}
+
+export async function PUT(request: Request) {
+  try {
+    const input = (await request.json()) as SubscriptionInput;
+    if (!input.endpoint?.startsWith("https://") || !input.keys?.p256dh || !input.keys.auth) {
+      return Response.json({ error: "Ongeldige pushregistratie" }, { status: 400 });
+    }
+    await sendTestNotification({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth });
+    return Response.json({ sent: true });
+  } catch (error) {
+    console.error("[push] testmelding mislukt", error);
+    return Response.json({ error: "Testmelding versturen is mislukt" }, { status: 502 });
+  }
 }

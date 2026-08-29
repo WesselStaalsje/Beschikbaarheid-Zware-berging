@@ -44,5 +44,26 @@ export async function sendStatusNotification(change: StatusNotification) {
       else throw error;
     }
   }));
-  for (const result of results) if (result.status === "rejected") console.error("Pushmelding mislukt", result.reason);
+  for (const result of results) if (result.status === "rejected") console.error("[push] statusmelding mislukt", result.reason);
+}
+
+export async function sendTestNotification(subscription: StoredSubscription) {
+  const sql = getSql();
+  const rows = (await sql`SELECT public_key, private_key FROM push_settings WHERE id = 1`) as Array<PushSettings>;
+  const settings = rows[0];
+  if (!settings) throw new Error("Pushinstellingen ontbreken");
+
+  webpush.setVapidDetails("https://beschikbaarheid-zware-berging.vercel.app", settings.public_key, settings.private_key);
+  const payload = JSON.stringify({
+    title: "Testmelding Zware Berging",
+    body: "De meldingen werken op dit apparaat.",
+    url: "/",
+    tag: `push-test-${Date.now()}`,
+  });
+
+  await webpush.sendNotification(
+    { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+    payload,
+    { TTL: 300 },
+  );
 }
