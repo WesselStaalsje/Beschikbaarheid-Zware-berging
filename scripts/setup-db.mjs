@@ -44,9 +44,18 @@ await sql`
   ON CONFLICT (id) DO NOTHING
 `;
 
-const depots = ["Eindhoven", "Duiven", "Ede", "Ermelo", "Breda", "Roosendaal", "Veghel", "Hulten"];
-for (const [sortOrder, name] of depots.entries()) {
-  const id = name.toLowerCase();
+const depots = [
+  { id: "eindhoven", name: "Eindhoven" },
+  { id: "duiven", name: "Duiven" },
+  { id: "ede", name: "Ede" },
+  { id: "ermelo", name: "Raamsdonksveer" },
+  { id: "breda", name: "Breda" },
+  { id: "roosendaal", name: "Roosendaal" },
+  { id: "veghel", name: "Veghel" },
+  { id: "hulten", name: "Hulten" },
+];
+for (const [sortOrder, depot] of depots.entries()) {
+  const { id, name } = depot;
   await sql`INSERT INTO depots (id, name, sort_order) VALUES (${id}, ${name}, ${sortOrder}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`;
 }
 
@@ -58,7 +67,7 @@ const seedResponders = [
   ["veghel-paul", "Paul", "veghel", 0],
 ];
 for (const [id, name, depotId, sortOrder] of seedResponders) {
-  const depot = depots.find((item) => item.toLowerCase() === depotId);
+  const depot = depots.find((item) => item.id === depotId)?.name;
   await sql`
     INSERT INTO responders (id, name, depot, depot_id, sort_order, status)
     VALUES (${id}, ${name}, ${depot}, ${depotId}, ${sortOrder}, 'off-duty')
