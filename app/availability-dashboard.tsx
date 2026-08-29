@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { NotificationControl } from "./notification-control";
 
 type Depot = { id: string; name: string };
 
@@ -112,6 +113,7 @@ export function AvailabilityDashboard() {
               <Clock3 className="size-4 text-[#f9b233]" />
               {clock.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
             </div>
+            <NotificationControl />
             <Link href="/beheer" className="grid size-8 place-items-center border border-white/15 text-white/60 transition hover:border-white/30 hover:text-white" aria-label="Beheer openen"><Settings className="size-4" /></Link>
           </div>
         </div>

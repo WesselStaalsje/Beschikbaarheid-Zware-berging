@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import webpush from "web-push";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL ontbreekt. Voeg eerst Neon Postgres toe via de Vercel Marketplace.");
@@ -38,6 +39,23 @@ await sql`CREATE TABLE IF NOT EXISTS admin_sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )`;
 await sql`CREATE INDEX IF NOT EXISTS admin_sessions_expires_at_idx ON admin_sessions (expires_at)`;
+await sql`CREATE TABLE IF NOT EXISTS push_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  public_key TEXT NOT NULL,
+  private_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)`;
+await sql`CREATE TABLE IF NOT EXISTS push_subscriptions (
+  endpoint TEXT PRIMARY KEY,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)`;
+const pushSettings = await sql`SELECT 1 FROM push_settings WHERE id = 1`;
+if (!pushSettings[0]) {
+  const keys = webpush.generateVAPIDKeys();
+  await sql`INSERT INTO push_settings (id, public_key, private_key) VALUES (1, ${keys.publicKey}, ${keys.privateKey}) ON CONFLICT (id) DO NOTHING`;
+}
 await sql`
   INSERT INTO admin_settings (id, pin_salt, pin_hash)
   VALUES (1, '04cfb4a90c4363b20babd4d511ff7fa8', 'bcdf4b809f17a287a21416c86742972b7b2628b185fbd526bb5cbb15e3a7a10be09be5e0c032e60ac8022938567c519cb1380b48960140badfd7ec2b6b1d447d')
