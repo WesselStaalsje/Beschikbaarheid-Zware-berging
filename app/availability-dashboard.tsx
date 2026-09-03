@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Building2, CalendarClock, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Building2, CalendarClock, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { NotificationControl } from "./notification-control";
 
@@ -20,9 +20,25 @@ type Responder = {
   updatedBy: string | null;
 };
 
+const STALE_AFTER_MS = 90 * 60 * 1000;
+
 function formatTime(value: string | null) {
   if (!value) return "Nog niet gewijzigd";
   return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function isResponderStale(responder: Responder, now: Date) {
+  if (responder.status === "off-duty" || !responder.updatedAt) return false;
+  return now.getTime() - new Date(responder.updatedAt).getTime() >= STALE_AFTER_MS;
+}
+
+function formatStatusAge(value: string | null, now: Date) {
+  if (!value) return "";
+  const totalMinutes = Math.max(0, Math.floor((now.getTime() - new Date(value).getTime()) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (!hours) return `${minutes} min`;
+  return `${hours}u${minutes ? ` ${minutes}m` : ""}`;
 }
 
 export function AvailabilityDashboard() {
@@ -64,6 +80,8 @@ export function AvailabilityDashboard() {
   const availableCount = responders.filter((responder) => responder.status === "available").length;
   const busyCount = responders.filter((responder) => responder.status === "busy").length;
   const onDutyCount = availableCount + busyCount;
+  const staleResponders = responders.filter((responder) => isResponderStale(responder, clock));
+  const staleCount = staleResponders.length;
   const latestUpdate = useMemo(
     () => responders.map((responder) => responder.updatedAt).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null,
     [responders],
@@ -71,7 +89,8 @@ export function AvailabilityDashboard() {
 
   async function updateResponder(responder: Responder, status: Responder["status"], note = responder.activityNote) {
     const previous = responders;
-    const updatedAt = new Date().toISOString();
+    const statusChanged = responder.status !== status;
+    const updatedAt = statusChanged ? new Date().toISOString() : responder.updatedAt;
     const activityNote = status === "busy" ? note : null;
     setResponders((items) => items.map((item) => item.id === responder.id ? { ...item, status, activityNote, updatedAt, updatedBy: "Meldkamer" } : item));
     setSyncing(true);
@@ -153,6 +172,13 @@ export function AvailabilityDashboard() {
           </div>
         </section>
 
+        {staleCount > 0 ? (
+          <div className="mb-4 flex items-center gap-3 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 shadow-sm">
+            <AlertTriangle className="size-5 shrink-0" />
+            <div><strong>{staleCount} {staleCount === 1 ? "status is" : "statussen zijn"} langer dan 1,5 uur ongewijzigd.</strong><span className="ml-1 font-normal">Controleer of deze chauffeurs nog correct staan.</span></div>
+          </div>
+        ) : null}
+
         {error && <div className="mb-4 border-l-4 border-red-500 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800">{error}</div>}
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-busy={loading}>
@@ -160,11 +186,12 @@ export function AvailabilityDashboard() {
             const depotResponders = responders.filter((responder) => responder.depot === depot.name);
             const depotAvailable = depotResponders.filter((responder) => responder.status === "available").length;
             const depotBusy = depotResponders.filter((responder) => responder.status === "busy").length;
+            const depotStale = depotResponders.filter((responder) => isResponderStale(responder, clock)).length;
             return (
-              <article key={depot.id} className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <article key={depot.id} className={`overflow-hidden bg-white shadow-sm ${depotStale ? "border-2 border-red-400" : "border border-slate-200"}`}>
                 <div className="flex items-center justify-between border-b border-slate-200 bg-[#f8f9fa] px-4 py-3">
                   <div className="flex items-center gap-2.5"><Building2 className="size-4 text-slate-500" /><h2 className="text-sm font-bold uppercase tracking-[0.04em]">{depot.name}</h2></div>
-                  <span className={`min-w-8 px-2 py-1 text-center text-[10px] font-bold ${depotAvailable ? "bg-emerald-100 text-emerald-800" : depotBusy ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>{depotResponders.length ? `${depotAvailable} vrij · ${depotBusy} bezig` : "0"}</span>
+                  {depotStale ? <span className="bg-red-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.06em] text-red-700">{depotStale} controle</span> : <span className={`min-w-8 px-2 py-1 text-center text-[10px] font-bold ${depotAvailable ? "bg-emerald-100 text-emerald-800" : depotBusy ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>{depotResponders.length ? `${depotAvailable} vrij · ${depotBusy} bezig` : "0"}</span>}
                 </div>
                 <div className="divide-y divide-slate-100">
                   {depotResponders.length === 0 && (
@@ -173,20 +200,26 @@ export function AvailabilityDashboard() {
                       <div><p className="text-sm font-semibold text-slate-500">Geen vaste Plusberger</p><p className="mt-0.5 text-[10px]">Voor deze vestiging is niemand ingedeeld</p></div>
                     </div>
                   )}
-                  {depotResponders.map((responder) => (
-                    <div key={responder.id} className={`px-4 py-3 transition ${responder.status === "available" ? "bg-emerald-50/45" : responder.status === "busy" ? "bg-amber-50/55" : "bg-white"}`}>
-                      <div className="mb-2.5 flex items-center gap-3">
-                        <div className={`grid size-8 shrink-0 place-items-center rounded-full ${responder.status === "available" ? "bg-emerald-500 text-white" : responder.status === "busy" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-400"}`}>{responder.status === "available" ? <Check className="size-4" strokeWidth={3} /> : responder.status === "busy" ? <Wrench className="size-4" /> : <CircleMinus className="size-4" />}</div>
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{responder.name}{responder.vehicleNumber ? <span className="ml-1.5 font-mono text-xs font-bold text-slate-500">· {responder.vehicleNumber}</span> : null}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{responder.updatedAt ? `${formatTime(responder.updatedAt)} · ${responder.updatedBy ?? "Meldkamer"}` : "Niet in dienst"}</p></div>
+                  {depotResponders.map((responder) => {
+                    const stale = isResponderStale(responder, clock);
+                    return (
+                      <div key={responder.id} className={`px-4 py-3 transition ${stale ? "bg-red-50 ring-2 ring-inset ring-red-400" : responder.status === "available" ? "bg-emerald-50/45" : responder.status === "busy" ? "bg-amber-50/55" : "bg-white"}`}>
+                        <div className="mb-2.5 flex items-center gap-3">
+                          <div className={`grid size-8 shrink-0 place-items-center rounded-full ${stale ? "bg-red-500 text-white" : responder.status === "available" ? "bg-emerald-500 text-white" : responder.status === "busy" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-400"}`}>{stale ? <AlertTriangle className="size-4" strokeWidth={2.5} /> : responder.status === "available" ? <Check className="size-4" strokeWidth={3} /> : responder.status === "busy" ? <Wrench className="size-4" /> : <CircleMinus className="size-4" />}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2"><p className="truncate text-sm font-semibold">{responder.name}{responder.vehicleNumber ? <span className="ml-1.5 font-mono text-xs font-bold text-slate-500">· {responder.vehicleNumber}</span> : null}</p>{stale ? <span className="shrink-0 bg-red-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-red-700">Status oud</span> : null}</div>
+                            <p className={`mt-0.5 truncate text-[10px] ${stale ? "font-bold text-red-700" : "text-slate-500"}`}>{stale ? `Al ${formatStatusAge(responder.updatedAt, clock)} ongewijzigd · controleer status` : responder.updatedAt ? `${formatTime(responder.updatedAt)} · ${responder.updatedBy ?? "Meldkamer"}` : "Niet in dienst"}</p>
+                          </div>
+                        </div>
+                        <RadioGroup value={responder.status} onValueChange={(value) => void updateResponder(responder, value as Responder["status"])} disabled={syncing} className="grid grid-cols-3 gap-1" aria-label={`Status van ${responder.name}`}>
+                          <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "off-duty" ? "border-slate-500 bg-slate-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}><RadioGroupItem value="off-duty" className="sr-only" />Niet in dienst</label>
+                          <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "available" ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-emerald-50"}`}><RadioGroupItem value="available" className="sr-only" />Beschikbaar</label>
+                          <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "busy" ? "border-amber-500 bg-amber-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-amber-50"}`}><RadioGroupItem value="busy" className="sr-only" />Bezig</label>
+                        </RadioGroup>
+                        {responder.status === "busy" ? <BusyNote responder={responder} disabled={syncing} onSave={(note) => updateResponder(responder, "busy", note)} /> : null}
                       </div>
-                      <RadioGroup value={responder.status} onValueChange={(value) => void updateResponder(responder, value as Responder["status"])} disabled={syncing} className="grid grid-cols-3 gap-1" aria-label={`Status van ${responder.name}`}>
-                        <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "off-duty" ? "border-slate-500 bg-slate-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}><RadioGroupItem value="off-duty" className="sr-only" />Niet in dienst</label>
-                        <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "available" ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-emerald-50"}`}><RadioGroupItem value="available" className="sr-only" />Beschikbaar</label>
-                        <label className={`cursor-pointer border px-2 py-1.5 text-center text-[10px] font-bold transition ${responder.status === "busy" ? "border-amber-500 bg-amber-500 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-amber-50"}`}><RadioGroupItem value="busy" className="sr-only" />Bezig</label>
-                      </RadioGroup>
-                      {responder.status === "busy" ? <BusyNote responder={responder} disabled={syncing} onSave={(note) => updateResponder(responder, "busy", note)} /> : null}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </article>
             );
