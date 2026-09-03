@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PwaRegister } from "./pwa-register";
+import { ThemeToggle } from "./theme-toggle";
 
 export const viewport = {
   width: "device-width",
@@ -26,14 +27,24 @@ export const metadata: Metadata = {
   },
 };
 
+const themeScript = `
+  try {
+    const saved = localStorage.getItem('plusdiensten-theme');
+    const theme = saved === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  } catch (_) {}
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl">
-      <body className="antialiased"><PwaRegister />{children}</body>
+    <html lang="nl" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
+      <body className="antialiased"><PwaRegister />{children}<ThemeToggle /></body>
     </html>
   );
 }
