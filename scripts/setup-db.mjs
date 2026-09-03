@@ -55,7 +55,7 @@ await sql`CREATE TABLE IF NOT EXISTS standby_roster (
   duty_date DATE PRIMARY KEY,
   person_name TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_by TEXT NOT NULL DEFAULT 'Rooster oktober 2026'
+  updated_by TEXT NOT NULL DEFAULT 'Rooster 2026'
 )`;
 const pushSettings = await sql`SELECT 1 FROM push_settings WHERE id = 1`;
 if (!pushSettings[0]) {
@@ -100,21 +100,37 @@ for (const [id, name, depotId, sortOrder] of seedResponders) {
 }
 
 const standbyRoster = [
-  ["2026-10-01", "Stijn"],
-  ["2026-10-02", "Wessel"], ["2026-10-03", "Wessel"], ["2026-10-04", "Wessel"], ["2026-10-05", "Wessel"],
-  ["2026-10-06", "Nick"], ["2026-10-07", "Olaf"], ["2026-10-08", "Bob"],
-  ["2026-10-09", "Stijn"], ["2026-10-10", "Stijn"], ["2026-10-11", "Stijn"], ["2026-10-12", "Stijn"],
-  ["2026-10-13", "Wessel"], ["2026-10-14", "Nick"], ["2026-10-15", "Olaf"],
-  ["2026-10-16", "Bob"], ["2026-10-17", "Bob"], ["2026-10-18", "Bob"], ["2026-10-19", "Bob"], ["2026-10-20", "Bob"],
-  ["2026-10-21", "Wessel"], ["2026-10-22", "Nick"],
-  ["2026-10-23", "Olaf"], ["2026-10-24", "Olaf"], ["2026-10-25", "Olaf"], ["2026-10-26", "Olaf"],
-  ["2026-10-27", "Stijn"], ["2026-10-28", "Stijn"], ["2026-10-29", "Wessel"],
-  ["2026-10-30", "Nick"], ["2026-10-31", "Nick"], ["2026-11-01", "Nick"],
+  ["2026-09-01", "Bob", "Rooster september 2026"], ["2026-09-02", "Bob", "Rooster september 2026"],
+  ["2026-09-03", "Bob", "Rooster september 2026"], ["2026-09-04", "Bob", "Rooster september 2026"],
+  ["2026-09-05", "Bob", "Rooster september 2026"], ["2026-09-06", "Bob", "Rooster september 2026"],
+  ["2026-09-07", "Stijn", "Rooster september 2026"], ["2026-09-08", "Stijn", "Rooster september 2026"],
+  ["2026-09-09", "Stijn", "Rooster september 2026"], ["2026-09-10", "Stijn", "Rooster september 2026"],
+  ["2026-09-11", "Stijn", "Rooster september 2026"], ["2026-09-12", "Stijn", "Rooster september 2026"],
+  ["2026-09-13", "Stijn", "Rooster september 2026"],
+  ["2026-09-14", "Nick", "Rooster september 2026"], ["2026-09-15", "Nick", "Rooster september 2026"],
+  ["2026-09-16", "Nick", "Rooster september 2026"], ["2026-09-17", "Nick", "Rooster september 2026"],
+  ["2026-09-18", "Olaf", "Rooster september 2026"], ["2026-09-19", "Olaf", "Rooster september 2026"],
+  ["2026-09-20", "Olaf", "Rooster september 2026"], ["2026-09-21", "Olaf", "Rooster september 2026"],
+  ["2026-09-22", "Bob", "Rooster september 2026"], ["2026-09-23", "Stijn", "Rooster september 2026"],
+  ["2026-09-24", "Wessel", "Rooster september 2026"],
+  ["2026-09-25", "Nick", "Rooster september 2026"], ["2026-09-26", "Nick", "Rooster september 2026"],
+  ["2026-09-27", "Nick", "Rooster september 2026"], ["2026-09-28", "Nick", "Rooster september 2026"],
+  ["2026-09-29", "Olaf", "Rooster september 2026"], ["2026-09-30", "Bob", "Rooster september 2026"],
+  ["2026-10-01", "Stijn", "Rooster oktober 2026"],
+  ["2026-10-02", "Wessel", "Rooster oktober 2026"], ["2026-10-03", "Wessel", "Rooster oktober 2026"], ["2026-10-04", "Wessel", "Rooster oktober 2026"], ["2026-10-05", "Wessel", "Rooster oktober 2026"],
+  ["2026-10-06", "Nick", "Rooster oktober 2026"], ["2026-10-07", "Olaf", "Rooster oktober 2026"], ["2026-10-08", "Bob", "Rooster oktober 2026"],
+  ["2026-10-09", "Stijn", "Rooster oktober 2026"], ["2026-10-10", "Stijn", "Rooster oktober 2026"], ["2026-10-11", "Stijn", "Rooster oktober 2026"], ["2026-10-12", "Stijn", "Rooster oktober 2026"],
+  ["2026-10-13", "Wessel", "Rooster oktober 2026"], ["2026-10-14", "Nick", "Rooster oktober 2026"], ["2026-10-15", "Olaf", "Rooster oktober 2026"],
+  ["2026-10-16", "Bob", "Rooster oktober 2026"], ["2026-10-17", "Bob", "Rooster oktober 2026"], ["2026-10-18", "Bob", "Rooster oktober 2026"], ["2026-10-19", "Bob", "Rooster oktober 2026"], ["2026-10-20", "Bob", "Rooster oktober 2026"],
+  ["2026-10-21", "Wessel", "Rooster oktober 2026"], ["2026-10-22", "Nick", "Rooster oktober 2026"],
+  ["2026-10-23", "Olaf", "Rooster oktober 2026"], ["2026-10-24", "Olaf", "Rooster oktober 2026"], ["2026-10-25", "Olaf", "Rooster oktober 2026"], ["2026-10-26", "Olaf", "Rooster oktober 2026"],
+  ["2026-10-27", "Stijn", "Rooster oktober 2026"], ["2026-10-28", "Stijn", "Rooster oktober 2026"], ["2026-10-29", "Wessel", "Rooster oktober 2026"],
+  ["2026-10-30", "Nick", "Rooster oktober 2026"], ["2026-10-31", "Nick", "Rooster oktober 2026"], ["2026-11-01", "Nick", "Rooster oktober 2026"],
 ];
-for (const [dutyDate, personName] of standbyRoster) {
+for (const [dutyDate, personName, updatedBy] of standbyRoster) {
   await sql`
-    INSERT INTO standby_roster (duty_date, person_name)
-    VALUES (${dutyDate}::date, ${personName})
+    INSERT INTO standby_roster (duty_date, person_name, updated_by)
+    VALUES (${dutyDate}::date, ${personName}, ${updatedBy})
     ON CONFLICT (duty_date) DO NOTHING
   `;
 }
