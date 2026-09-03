@@ -41,7 +41,8 @@ export async function GET() {
       JOIN depots d ON d.id = r.depot_id
       WHERE r.active = TRUE
         AND d.active = TRUE
-        AND r.status IN ('available', 'busy')
+        AND r.status = 'busy'
+        AND LOWER(d.name) <> 'buitenland'
         AND r.updated_at <= NOW() - (${STALE_AFTER_MINUTES} * INTERVAL '1 minute')
       ORDER BY r.updated_at ASC
     `) as StaleResponder[];
