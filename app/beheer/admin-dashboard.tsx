@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Building2, CalendarDays, KeyRound, LogOut, Plus, Save, Trash2, Truck, UserRoundCog } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, CalendarDays, CheckCircle2, FileSpreadsheet, KeyRound, LogOut, Plus, Save, Trash2, Truck, Upload, UserRoundCog, X } from "lucide-react";
 
 type Depot = { id: string; name: string; sortOrder: number; active: boolean };
 type Responder = { id: string; name: string; depotId: string; vehicleNumber: string | null; sortOrder: number; active: boolean };
 type Standby = { date: string; name: string; updatedAt: string | null; updatedBy: string | null };
 type AdminTab = "standby" | "responders" | "depots" | "settings";
+type ImportPreview = {
+  entries: Array<{ date: string; name: string; sheet: string }>;
+  sheets: Array<{ name: string; days: number; firstDate: string | null; lastDate: string | null }>;
+  warnings: string[];
+};
 
 const DEFAULT_STANDBY_NAMES = ["Wessel", "Nick", "Bob", "Stijn", "Olaf"];
 const TABS: Array<{ id: AdminTab; label: string; icon: typeof CalendarDays }> = [
@@ -33,6 +38,10 @@ export function AdminDashboard() {
   const [newPin, setNewPin] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState("");
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin", { cache: "no-store" });
@@ -64,6 +73,41 @@ export function AdminDashboard() {
     const response = await fetch("/api/admin/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin }) });
     if (response.ok) { setPin(""); await load(); } else setMessage("Onjuiste pincode");
     setBusy(false);
+  }
+
+  async function previewRoster(file: File) {
+    setImportFile(file); setImportPreview(null); setImportError(""); setImportBusy(true);
+    try {
+      const formData = new FormData(); formData.append("file", file);
+      const response = await fetch("/api/admin/standby-import?mode=preview", { method: "POST", body: formData });
+      const data = await response.json() as ImportPreview & { error?: string };
+      if (!response.ok) throw new Error(data.error || "Rooster kon niet worden gelezen");
+      setImportPreview(data);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Rooster kon niet worden gelezen");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function importRoster() {
+    if (!importFile || !importPreview) return;
+    setImportBusy(true); setImportError(""); setMessage("");
+    try {
+      const formData = new FormData(); formData.append("file", importFile);
+      const response = await fetch("/api/admin/standby-import?mode=import", { method: "POST", body: formData });
+      const data = await response.json() as { success?: boolean; imported?: number; warnings?: string[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "Importeren mislukt");
+      const firstDate = importPreview.entries[0]?.date;
+      if (firstDate) setStandbyMonth(firstDate.slice(0, 7));
+      setMessage(`${data.imported ?? importPreview.entries.length} achterwachtdagen geïmporteerd uit ${importFile.name}`);
+      setImportFile(null); setImportPreview(null);
+      await load();
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Importeren mislukt");
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   const standbyNames = useMemo(() => Array.from(new Set([...DEFAULT_STANDBY_NAMES, ...standby.map((item) => item.name)])), [standby]);
@@ -107,7 +151,28 @@ export function AdminDashboard() {
 
         {activeTab === "standby" ? (
           <section className="bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="grid size-9 place-items-center bg-[#fff4d8] text-[#d18b00]"><CalendarDays className="size-5"/></div><div><h2 className="font-bold">Achterwacht</h2><p className="text-xs text-slate-500">Plan of wijzig de achterwacht per datum.</p></div></div><input type="month" value={standbyMonth} onChange={(e) => setStandbyMonth(e.target.value)} className="border px-3 py-2 text-sm" aria-label="Maand achterwacht" /></div>
+            <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="grid size-9 place-items-center bg-[#fff4d8] text-[#d18b00]"><CalendarDays className="size-5"/></div><div><h2 className="font-bold">Achterwacht</h2><p className="text-xs text-slate-500">Plan, importeer of wijzig de achterwacht per datum.</p></div></div><input type="month" value={standbyMonth} onChange={(e) => setStandbyMonth(e.target.value)} className="border px-3 py-2 text-sm" aria-label="Maand achterwacht" /></div>
+
+            <div className="border-b bg-slate-50 p-4 sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex gap-3"><div className="grid size-10 shrink-0 place-items-center bg-white text-slate-600 shadow-sm"><FileSpreadsheet className="size-5"/></div><div><h3 className="text-sm font-bold">Rooster uit Excel importeren</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Upload hetzelfde type achterwachtrooster. De app leest automatisch de werkbladen, datums, namen en de <strong>gele omlijning</strong>. Je krijgt altijd eerst een controle voordat er iets wordt aangepast.</p></div></div>
+                <label className={`flex shrink-0 cursor-pointer items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold transition hover:border-slate-500 ${importBusy ? "pointer-events-none opacity-50" : ""}`}><Upload className="size-4"/>{importBusy ? "Rooster lezen…" : "Excel selecteren"}<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void previewRoster(file); event.currentTarget.value = ""; }}/></label>
+              </div>
+
+              {importError ? <div className="mt-4 flex items-start gap-2 border-l-4 border-red-500 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-800"><AlertTriangle className="mt-0.5 size-4 shrink-0"/>{importError}</div> : null}
+
+              {importFile && importPreview ? (
+                <div className="mt-4 border border-slate-200 bg-white">
+                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{importFile.name}</p><p className="mt-0.5 text-xs text-slate-500">{importPreview.sheets.length} werkblad{importPreview.sheets.length === 1 ? "" : "en"} · {importPreview.entries.length} unieke achterwachtdagen herkend</p></div><button type="button" onClick={() => { setImportFile(null); setImportPreview(null); setImportError(""); }} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Import annuleren"><X className="size-4"/></button></div>
+                  <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
+                    {importPreview.sheets.map((sheet) => <div key={sheet.name} className="bg-white px-4 py-3"><div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600"/><p className="text-xs font-bold">{sheet.name}</p></div><p className="mt-1 pl-6 text-[11px] text-slate-500">{sheet.days} gemarkeerde dagen{sheet.firstDate && sheet.lastDate ? ` · ${formatImportDate(sheet.firstDate)} t/m ${formatImportDate(sheet.lastDate)}` : ""}</p></div>)}
+                  </div>
+                  {importPreview.warnings.length ? <div className="border-t bg-amber-50 px-4 py-3"><div className="flex gap-2 text-xs font-bold text-amber-900"><AlertTriangle className="size-4 shrink-0"/>Controlepunten</div><ul className="mt-2 space-y-1 pl-6 text-[11px] text-amber-900">{importPreview.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></div> : null}
+                  <div className="flex flex-col gap-3 border-t bg-[#fff9eb] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-[11px] leading-5 text-slate-600"><strong>Let op:</strong> bestaande achterwacht op de datums uit dit bestand wordt vervangen. Datums die niet in het bestand staan blijven gewoon staan.</p><button type="button" disabled={importBusy || !importPreview.entries.length} onClick={() => void importRoster()} className="flex shrink-0 items-center justify-center gap-2 bg-[#101820] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40"><Upload className="size-4"/>{importBusy ? "Importeren…" : `${importPreview.entries.length} dagen importeren`}</button></div>
+                </div>
+              ) : null}
+            </div>
+
             <form onSubmit={(event) => { event.preventDefault(); void action({ action: "set-standby", date: standbyDate, personName: standbyName }, "Achterwacht opgeslagen").then(() => setStandbyDate("")); }} className="grid gap-2 border-b bg-[#fff9eb] p-4 sm:grid-cols-[180px_1fr_auto]">
               <input type="date" value={standbyDate} onChange={(e) => setStandbyDate(e.target.value)} className="border px-3 py-2 text-sm" aria-label="Datum achterwacht" />
               <select value={standbyName} onChange={(e) => setStandbyName(e.target.value)} className="border px-3 py-2 text-sm" aria-label="Naam achterwacht">{standbyNames.map((name) => <option key={name} value={name}>{name}</option>)}</select>
@@ -148,6 +213,10 @@ export function AdminDashboard() {
       </div>
     </main>
   );
+}
+
+function formatImportDate(value: string) {
+  return new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value}T12:00:00`));
 }
 
 function StandbyRow({ item, names, busy, save, remove }: { item: Standby; names: string[]; busy: boolean; save: (name: string) => void; remove: () => void }) {
