@@ -1,4 +1,10 @@
 {
   "buildCommand": "npm run vercel-build",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/status-watch",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
