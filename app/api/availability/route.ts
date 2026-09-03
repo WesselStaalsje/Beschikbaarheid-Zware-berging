@@ -39,14 +39,22 @@ export async function PUT(request: Request) {
     const activityNote = input.status === "busy" ? (input.activityNote ?? "").trim().slice(0, 100) || null : null;
     const sql = getSql();
     const previousRows = (await sql`SELECT status, activity_note AS "activityNote" FROM responders WHERE id = ${input.id}`) as Array<{ status: string; activityNote: string | null }>;
+    const previous = previousRows[0];
+    const statusChanged = !previous || previous.status !== input.status;
+
     const rows = (await sql`
-      UPDATE responders r SET status = ${input.status}, activity_note = ${activityNote}, updated_at = ${updatedAt}, updated_by = ${updatedBy}
-      FROM depots d WHERE r.id = ${input.id} AND r.active = TRUE AND d.id = r.depot_id AND d.active = TRUE
+      UPDATE responders r SET
+        status = ${input.status},
+        activity_note = ${activityNote},
+        updated_at = CASE WHEN r.status IS DISTINCT FROM ${input.status} THEN ${updatedAt}::timestamptz ELSE r.updated_at END,
+        updated_by = ${updatedBy}
+      FROM depots d
+      WHERE r.id = ${input.id} AND r.active = TRUE AND d.id = r.depot_id AND d.active = TRUE
       RETURNING r.id, r.name, r.vehicle_number AS "vehicleNumber", d.name AS depot, r.status, r.activity_note AS "activityNote", r.updated_at AS "updatedAt", r.updated_by AS "updatedBy"
     `) as Array<{ id: string; name: string; vehicleNumber: string | null; depot: string; status: string; activityNote: string | null; updatedAt: string; updatedBy: string }>;
     if (!rows[0]) return Response.json({ error: "Chauffeur niet gevonden" }, { status: 404 });
-    const previous = previousRows[0];
-    if (!previous || previous.status !== input.status || previous.activityNote !== activityNote) {
+
+    if (!previous || statusChanged || previous.activityNote !== activityNote) {
       after(() => sendStatusNotification(rows[0]));
     }
     return Response.json({ responder: rows[0] });
