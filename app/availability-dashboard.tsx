@@ -28,7 +28,7 @@ function formatTime(value: string | null) {
 }
 
 function isResponderStale(responder: Responder, now: Date) {
-  if (responder.status === "off-duty" || !responder.updatedAt) return false;
+  if (responder.status !== "busy" || responder.depot.toLowerCase() === "buitenland" || !responder.updatedAt) return false;
   return now.getTime() - new Date(responder.updatedAt).getTime() >= STALE_AFTER_MS;
 }
 
