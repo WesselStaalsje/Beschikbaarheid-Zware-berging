@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Building2, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
+import { Activity, Building2, CalendarClock, Check, CircleMinus, Clock3, Radio, RefreshCw, Save, Settings, ShieldCheck, Wrench } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { NotificationControl } from "./notification-control";
 
 type Depot = { id: string; name: string };
+type Standby = { date: string; name: string; updatedAt: string | null; updatedBy: string | null };
 
 type Responder = {
   id: string;
@@ -27,6 +28,7 @@ function formatTime(value: string | null) {
 export function AvailabilityDashboard() {
   const [depots, setDepots] = useState<Depot[]>([]);
   const [responders, setResponders] = useState<Responder[]>([]);
+  const [standby, setStandby] = useState<Standby | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +39,10 @@ export function AvailabilityDashboard() {
     try {
       const response = await fetch("/api/availability", { cache: "no-store" });
       if (!response.ok) throw new Error("Status kon niet worden opgehaald");
-      const payload = (await response.json()) as { depots: Depot[]; responders: Responder[] };
+      const payload = (await response.json()) as { depots: Depot[]; responders: Responder[]; standby: Standby | null };
       setDepots(payload.depots);
       setResponders(payload.responders);
+      setStandby(payload.standby ?? null);
       setError(null);
     } catch {
       setError("Synchronisatie tijdelijk onderbroken");
@@ -104,7 +107,7 @@ export function AvailabilityDashboard() {
               <p className="mt-0.5 text-[11px] text-white/55">Actuele beschikbaarheid per vestiging</p>
             </div>
           </div>
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 text-xs text-white/65 sm:flex">
               <span className={`size-2 rounded-full ${error ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`} />
               {error ? "Verbinding verbroken" : "Live verbonden"}
@@ -120,6 +123,14 @@ export function AvailabilityDashboard() {
       </header>
 
       <div className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 lg:px-8">
+        <section className="mb-4 flex items-center justify-between gap-4 border-l-4 border-[#f9b233] bg-[#101820] px-4 py-3.5 text-white shadow-sm sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center bg-[#f9b233] text-[#101820]"><CalendarClock className="size-5" /></div>
+            <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Achterwacht vandaag</p><p className="mt-0.5 truncate text-xl font-bold sm:text-2xl">{standby?.name ?? "Niet ingepland"}</p></div>
+          </div>
+          <div className="hidden text-right sm:block"><p className="text-xs font-semibold capitalize">{clock.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}</p><p className="mt-0.5 text-[10px] text-white/45">Wijzigbaar via Beheer</p></div>
+        </section>
+
         <section className="mb-4 grid grid-cols-3 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-[160px_160px_160px_1fr]">
           <div className="border-l-4 border-emerald-500 bg-white px-4 py-3 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Beschikbaar</p>
@@ -194,14 +205,7 @@ function BusyNote({ responder, disabled, onSave }: { responder: Responder; disab
 
   return (
     <form onSubmit={(event) => { event.preventDefault(); void onSave(note.trim()); }} className="mt-2 flex gap-1.5">
-      <input
-        autoFocus={!responder.activityNote}
-        value={note}
-        onChange={(event) => setNote(event.target.value.slice(0, 100))}
-        placeholder="Waar is deze chauffeur mee bezig?"
-        aria-label={`Werkzaamheden van ${responder.name}`}
-        className="min-w-0 flex-1 border border-amber-300 bg-white px-2.5 py-2 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500"
-      />
+      <input autoFocus={!responder.activityNote} value={note} onChange={(event) => setNote(event.target.value.slice(0, 100))} placeholder="Waar is deze chauffeur mee bezig?" aria-label={`Werkzaamheden van ${responder.name}`} className="min-w-0 flex-1 border border-amber-300 bg-white px-2.5 py-2 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500" />
       <button disabled={disabled || !changed} className="grid w-9 place-items-center bg-amber-500 text-white transition hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400" aria-label="Werkzaamheden opslaan"><Save className="size-4" /></button>
     </form>
   );
