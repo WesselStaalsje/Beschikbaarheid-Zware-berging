@@ -7,20 +7,21 @@ export const dynamic = "force-dynamic";
 
 const STATUSES = new Set(["off-duty", "available", "busy"]);
 type AvailabilityInput = { id?: string; status?: string; activityNote?: string | null };
+type StandbyRow = { date: string; name: string; updatedAt: string | null; updatedBy: string | null };
 
 export async function GET() {
   try {
     const sql = getSql();
-    const [depots, responders, standbyRows] = await Promise.all([
+    const [depots, responders] = await Promise.all([
       sql`SELECT id, name FROM depots WHERE active = TRUE ORDER BY sort_order, name`,
       sql`SELECT r.id, r.name, r.vehicle_number AS "vehicleNumber", d.name AS depot, r.status, r.activity_note AS "activityNote", r.updated_at AS "updatedAt", r.updated_by AS "updatedBy"
           FROM responders r JOIN depots d ON d.id = r.depot_id
           WHERE r.active = TRUE AND d.active = TRUE ORDER BY d.sort_order, r.sort_order, r.name`,
-      sql`SELECT duty_date::text AS date, person_name AS name, updated_at AS "updatedAt", updated_by AS "updatedBy"
-          FROM standby_roster
-          WHERE duty_date = (NOW() AT TIME ZONE 'Europe/Amsterdam')::date
-          LIMIT 1`,
     ]);
+    const standbyRows = (await sql`SELECT duty_date::text AS date, person_name AS name, updated_at AS "updatedAt", updated_by AS "updatedBy"
+      FROM standby_roster
+      WHERE duty_date = (NOW() AT TIME ZONE 'Europe/Amsterdam')::date
+      LIMIT 1`) as StandbyRow[];
     return Response.json({ depots, responders, standby: standbyRows[0] ?? null }, { headers: { "cache-control": "no-store" } });
   } catch {
     return Response.json({ error: "Database niet beschikbaar" }, { status: 503 });
