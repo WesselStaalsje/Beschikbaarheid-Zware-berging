@@ -51,6 +51,12 @@ await sql`CREATE TABLE IF NOT EXISTS push_subscriptions (
   auth TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )`;
+await sql`CREATE TABLE IF NOT EXISTS standby_roster (
+  duty_date DATE PRIMARY KEY,
+  person_name TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT NOT NULL DEFAULT 'Rooster oktober 2026'
+)`;
 const pushSettings = await sql`SELECT 1 FROM push_settings WHERE id = 1`;
 if (!pushSettings[0]) {
   const keys = webpush.generateVAPIDKeys();
@@ -92,6 +98,27 @@ for (const [id, name, depotId, sortOrder] of seedResponders) {
     ON CONFLICT (id) DO UPDATE SET depot_id = COALESCE(responders.depot_id, EXCLUDED.depot_id), sort_order = EXCLUDED.sort_order
   `;
 }
+
+const standbyRoster = [
+  ["2026-10-01", "Stijn"],
+  ["2026-10-02", "Wessel"], ["2026-10-03", "Wessel"], ["2026-10-04", "Wessel"], ["2026-10-05", "Wessel"],
+  ["2026-10-06", "Nick"], ["2026-10-07", "Olaf"], ["2026-10-08", "Bob"],
+  ["2026-10-09", "Stijn"], ["2026-10-10", "Stijn"], ["2026-10-11", "Stijn"], ["2026-10-12", "Stijn"],
+  ["2026-10-13", "Wessel"], ["2026-10-14", "Nick"], ["2026-10-15", "Olaf"],
+  ["2026-10-16", "Bob"], ["2026-10-17", "Bob"], ["2026-10-18", "Bob"], ["2026-10-19", "Bob"], ["2026-10-20", "Bob"],
+  ["2026-10-21", "Wessel"], ["2026-10-22", "Nick"],
+  ["2026-10-23", "Olaf"], ["2026-10-24", "Olaf"], ["2026-10-25", "Olaf"], ["2026-10-26", "Olaf"],
+  ["2026-10-27", "Stijn"], ["2026-10-28", "Stijn"], ["2026-10-29", "Wessel"],
+  ["2026-10-30", "Nick"], ["2026-10-31", "Nick"], ["2026-11-01", "Nick"],
+];
+for (const [dutyDate, personName] of standbyRoster) {
+  await sql`
+    INSERT INTO standby_roster (duty_date, person_name)
+    VALUES (${dutyDate}::date, ${personName})
+    ON CONFLICT (duty_date) DO NOTHING
+  `;
+}
+
 await sql`UPDATE responders SET depot_id = LOWER(depot) WHERE depot_id IS NULL`;
 await sql`DELETE FROM admin_sessions WHERE expires_at < NOW()`;
 console.log("Database is gereed.");
